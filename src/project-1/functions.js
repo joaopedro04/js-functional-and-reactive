@@ -1,5 +1,7 @@
+const { error } = require('console');
 const fs = require('fs');
 const _path = require('path')
+const { Observable } = require('rxjs')
 
 function readDirectory(path) {
     return new Promise((resolve, reject) => {
@@ -14,6 +16,22 @@ function readDirectory(path) {
 
 }
 
+function readDirectoryObs(path) {
+    return new Observable(subscriber => {
+        try {
+            let filesPath = fs.readdirSync(path)
+            let files = filesPath.map(file => {
+                subscriber.next(_path.join(path, file))
+            })
+            subscriber.complete()
+        } catch (e) {
+           subscriber.error(e)
+        }
+    })
+
+
+}
+
 function filterFilesByExtension(files, extensionFile) {
     let filteredFiles = []
     extensionFile.map(extension => {
@@ -24,6 +42,16 @@ function filterFilesByExtension(files, extensionFile) {
         })
     })
     return filteredFiles
+}
+
+function filterFilesByExtensionPipe(textPattern) {
+    return createPipeOperator(subscriber => ({
+        next(text) {
+            if(text.endsWith(textPattern)) {
+                subscriber.next(text)
+            }
+        }
+    }))
 }
 
 function readFile(filePath) {
@@ -67,9 +95,25 @@ function splitByWords(arr) {
 }
 
 
+function createPipeOperator(operatorFn) {
+    return function (source) {
+        return new Observable(subscriber => {
+            const sub = operatorFn(subscriber)
+            source.subscribe({
+                next: sub.next,
+                error: sub.error || (e => subscriber.error(e)),
+                complete: sub.complete || (e => subscriber.complete(e))
+            })
+        })
+    }
+}
+
+
 module.exports = {
-    readDirectory, 
+    readDirectory,
+    readDirectoryObs,
     filterFilesByExtension,
+    filterFilesByExtensionPipe,
     readFile,
     readAllFiles,
     removeBlankLines,

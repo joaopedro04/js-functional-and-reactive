@@ -6,6 +6,7 @@ function createObservable() {
         setTimeout(() => {
             subscriber.next(1)
         },1000)
+        subscriber.complete()
     }); 
 }
 
